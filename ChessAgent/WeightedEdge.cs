@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace VacuumAgent
+namespace ChessAgent
 {
     public class WeightedEdge<T> : IComparable<WeightedEdge<T>>
     {

@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ChessAgent</RootNamespace>
     <AssemblyName>ChessAgent</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -41,14 +41,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\Vacuum agent\VacuumAgent\VacuumAgent\DirectedWeightedGraph.cs">
-      <Link>DirectedWeightedGraph.cs</Link>
-    </Compile>
-    <Compile Include="..\..\..\Vacuum agent\VacuumAgent\VacuumAgent\WeightedEdge.cs">
-      <Link>WeightedEdge.cs</Link>
-    </Compile>
+    <Compile Include="BoardState.cs" />
+    <Compile Include="DirectedWeightedGraph.cs" />
+    <Compile Include="MinimaxDecision.cs" />
+    <Compile Include="Player.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="WeightedEdge.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
