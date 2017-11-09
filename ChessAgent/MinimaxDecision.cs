@@ -1,14 +1,19 @@
 ﻿using System;
+using System.Timers;
 
 namespace ChessAgent
 {
     public class MinimaxDecision<T>
     {
         private DirectedWeightedGraph<T> _graph;
+        private static bool _keepComputing = true;
+        
+        private readonly Timer _timer = new Timer();
         private readonly Func<T, int> _heuristic;
 
         private const int PositiveInf = int.MaxValue;
         private const int NegativeInf = int.MinValue;
+        private const int MaxComputationTimeInMilliseconds = 200;
         
         public MinimaxDecision(Func<T, int> heuristicCostEstimate)
         {
@@ -16,16 +21,38 @@ namespace ChessAgent
                 throw new ArgumentException("The heuristic function is null");
             
             _heuristic = heuristicCostEstimate;
+            _timer.Interval = MaxComputationTimeInMilliseconds;
+            _timer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
         }
 
-        public int IterativeDeepeningAlphaBeta(DirectedWeightedGraph<T> graph, T source)
+        private static void OnTimedEvent(object source, ElapsedEventArgs e)
+        {
+            _keepComputing = false;
+        }
+
+        /// <summary>
+        /// Compute the next best move, based on the game's graph.
+        /// </summary>
+        /// <param name="graph">The graph of the game.</param>
+        /// <param name="source">The actual game state.</param>
+        /// <returns></returns>
+        public void IterativeDeepeningAlphaBeta(DirectedWeightedGraph<T> graph, T source)
         {
             _graph = graph;
-            var maxDepth = 5;
+            var depth = 1;
+
+            _timer.Enabled = true;
             
             // TODO: Implement iterative deepening
+            // TODO: Implement transposition table
+            // TODO: Return a move
 
-            return AlphaBeta(source, maxDepth, NegativeInf, PositiveInf, true);
+            do
+            {
+                AlphaBeta(source, depth, NegativeInf, PositiveInf, true);
+            } while (_keepComputing);
+
+            _timer.Enabled = false;
         }
 
         private int AlphaBeta(T node, int depth, int alpha, int beta, bool maximizingPlayer)

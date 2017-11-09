@@ -11,23 +11,20 @@ namespace ChessAgent
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("test");
-            
-            /*try
-            {
+            try {
+                var agent = new Agent();
                 var stop = false;
                 var tabVal = new int[64];
+                string[] tabCoord = { "a8","b8","c8","d8","e8","f8","g8","h8",
+                                "a7","b7","c7","d7","e7","f7","g7","h7",
+                                "a6","b6","c6","d6","e6","f6","g6","h6",
+                                "a5","b5","c5","d5","e5","f5","g5","h5",
+                                "a4","b4","c4","d4","e4","f4","g4","h4",
+                                "a3","b3","c3","d3","e3","f3","g3","h3",
+                                "a2","b2","c2","d2","e2","f2","g2","h2",
+                                "a1","b1","c1","d1","e1","f1","g1","h1" };
                 string value;
-                var coord = new[] { "", "", "" };
-                var tabCoord = new[] { "a8","b8","c8","d8","e8","f8","g8","h8",
-                                       "a7","b7","c7","d7","e7","f7","g7","h7",
-                                       "a6","b6","c6","d6","e6","f6","g6","h6",
-                                       "a5","b5","c5","d5","e5","f5","g5","h5",
-                                       "a4","b4","c4","d4","e4","f4","g4","h4",
-                                       "a3","b3","c3","d3","e3","f3","g3","h3",
-                                       "a2","b2","c2","d2","e2","f2","g2","h2",
-                                       "a1","b1","c1","d1","e1","f1","g1","h1" };
-
+                
                 while (!stop)
                 {
                     using (var mmf = MemoryMappedFile.OpenExisting("plateau"))
@@ -62,23 +59,24 @@ namespace ChessAgent
                                 /******************************************************************************************************/
                                 /***************************************** ECRIRE LE CODE DE L'IA *************************************/
                                 /******************************************************************************************************/
-/*
-                                var mesPieces = new List<string>();
+
+                                var myPieces = new List<string>();
                                 for (var i = 0; i < tabVal.Length; i++)
                                 {
-                                    if (tabVal[i] > 0) mesPieces.Add(tabCoord[i]);
+                                    if (tabVal[i] > 0) myPieces.Add(tabCoord[i]);
                                 }
 
-                                var reste = new List<string>();
+                                var opponentPieces = new List<string>();
                                 for (var i = 0; i < tabVal.Length; i++)
                                 {
-                                    if (tabVal[i] <= 0) reste.Add(tabCoord[i]);
+                                    if (tabVal[i] < 0) opponentPieces.Add(tabCoord[i]);
                                 }
-
-                                var rnd = new Random();
-                                coord[0] = mesPieces[rnd.Next(mesPieces.Count)];
-                                coord[1] = tabCoord[rnd.Next(reste.Count)];
-
+                                
+                                agent.ObserveEnvironmentAndUpdateState(myPieces, opponentPieces);
+                                var coord = agent.ChooseMove();
+                                
+                                Console.WriteLine(coord[1]);
+                                
                                 // ex:
                                 //coord[0] = "b2";
                                 //coord[1] = "b3";
@@ -86,7 +84,7 @@ namespace ChessAgent
                                 /********************************************************************************************************/
                                 /********************************************************************************************************/
                                 /********************************************************************************************************/
-/*
+
                                 using (var accessor = mmf2.CreateViewAccessor())
                                 {
                                     value = coord[0];
@@ -109,7 +107,7 @@ namespace ChessAgent
             {
                 Console.WriteLine("Memory-mapped file does not exist. Run Process A first.");
                 Console.ReadLine();
-            }*/
+            }
         }
     }
 }
