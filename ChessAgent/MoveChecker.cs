@@ -9,15 +9,19 @@ namespace ChessAgent
     {
         public readonly string[] LegalColumns = {"a", "b", "c", "d", "e", "f", "g", "h" };
         public readonly string[] LegalRows = {"1", "2", "3", "4", "5", "6", "7", "8"};
-        
+
+        public abstract List<string> LegalMoves(string @from, PieceColor color, List<string> opponentPieces);
+
         /// <summary>
         /// Check if the move is legal, based on the piece type.
         /// </summary>
         /// <param name="from">Source position.</param>
         /// <param name="to">Destination position.</param>
+        /// <param name="color">The piece color</param>
+        /// <param name="opponentPieces">The opponent pieces' positions.</param>
         /// <returns>True if the move is in the board, false otherwise.</returns>
-        public abstract bool IsMoveLegal(string from, string to);
-
+        public abstract bool IsMoveLegal(string from, string to, PieceColor color, List<string> opponentPieces);
+        
         /// <summary>
         /// Check if a position is in the board.
         /// </summary>

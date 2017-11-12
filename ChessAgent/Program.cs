@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Text;
@@ -12,8 +13,9 @@ namespace ChessAgent
         public static void Main(string[] args)
         {
             try {
-                var agent = new Agent();
+                var agent = new Agent(PieceColor.White);
                 var stop = false;
+                var stopwatch = new Stopwatch();
                 var tabVal = new int[64];
                 string[] tabCoord = { "a8","b8","c8","d8","e8","f8","g8","h8",
                                 "a7","b7","c7","d7","e7","f7","g7","h7",
@@ -60,23 +62,29 @@ namespace ChessAgent
                                 /***************************************** ECRIRE LE CODE DE L'IA *************************************/
                                 /******************************************************************************************************/
 
-                                var myPieces = new List<string>();
+                                stopwatch.Start();
+                                    
+                                var myPieces = new Dictionary<string, int>();
                                 for (var i = 0; i < tabVal.Length; i++)
                                 {
-                                    if (tabVal[i] > 0) myPieces.Add(tabCoord[i]);
+                                    if (tabVal[i] > 0) myPieces.Add(tabCoord[i], tabVal[i]);
                                 }
 
-                                var opponentPieces = new List<string>();
+                                var opponentPieces = new Dictionary<string, int>();
                                 for (var i = 0; i < tabVal.Length; i++)
                                 {
-                                    if (tabVal[i] < 0) opponentPieces.Add(tabCoord[i]);
+                                    if (tabVal[i] < 0) opponentPieces.Add(tabCoord[i], tabVal[i]);
                                 }
                                 
                                 agent.ObserveEnvironmentAndUpdateState(myPieces, opponentPieces);
                                 var coord = agent.ChooseMove();
                                 
-                                Console.WriteLine(coord[1]);
+                                stopwatch.Stop();
                                 
+                                Console.WriteLine(stopwatch.ElapsedMilliseconds);
+                                Console.WriteLine(coord[0] + " " + coord[1]);
+                                stopwatch.Reset();
+
                                 // ex:
                                 //coord[0] = "b2";
                                 //coord[1] = "b3";

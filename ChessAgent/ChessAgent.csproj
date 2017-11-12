@@ -44,6 +44,7 @@
     <Compile Include="Agent.cs" />
     <Compile Include="BishopChecker.cs" />
     <Compile Include="BoardState.cs" />
+    <Compile Include="PieceColor.cs" />
     <Compile Include="DirectedWeightedGraph.cs" />
     <Compile Include="KingChecker.cs" />
     <Compile Include="KnightChecker.cs" />

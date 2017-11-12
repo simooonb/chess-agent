@@ -22,7 +22,7 @@ namespace ChessAgent
             
             _heuristic = heuristicCostEstimate;
             _timer.Interval = MaxComputationTimeInMilliseconds;
-            _timer.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+            _timer.Elapsed += OnTimedEvent;
         }
 
         private static void OnTimedEvent(object source, ElapsedEventArgs e)
