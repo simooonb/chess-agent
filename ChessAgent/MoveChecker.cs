@@ -208,18 +208,20 @@ namespace ChessAgent
             var closestNeg = Math.Max(ownNegMax + 1, oppNegMax);
             var closestPos = Math.Min(ownPosMin - 1, oppPosMin);
             var positionRowIndex = Array.IndexOf(LegalRows, position[1].ToString());
+            var positionColIndex = Array.IndexOf(LegalColumns, position[0].ToString());
 
-            for (var rowIndexOffset = closestNeg; rowIndexOffset <= closestPos; rowIndexOffset++)
+            for (var offset = closestNeg; offset <= closestPos; offset++)
             {
-                var rowIdx = positionRowIndex + rowIndexOffset;
+                var rowIdx = positionRowIndex + offset;
+                var colIdx = positionColIndex + offset;
                 
                 // Not in board
-                if (rowIdx < 0 || rowIdx > 7) continue;
+                if (rowIdx < 0 || rowIdx > 7 || colIdx < 0 || colIdx > 7) continue;
                 
                 // Same position
-                if (rowIdx.Equals(positionRowIndex)) continue;
+                if (rowIdx.Equals(positionRowIndex) && colIdx.Equals(positionColIndex)) continue;
                 
-                var tempPos = string.Concat(position[0], LegalRows[rowIdx]);
+                var tempPos = string.Concat(LegalColumns[colIdx], LegalRows[rowIdx]);
                 pos.Add(tempPos);
             }
 
