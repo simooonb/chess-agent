@@ -50,14 +50,26 @@ namespace ChessAgent
             OwnPieces.Clear();
             OpponentPieces.Clear();
             
-            foreach (var kvp in ownPieces)
-            {
-                AddToPieces(kvp.Value, kvp.Key);
-            }
+            var opponentPos = new List<string>();
+            var ownPos = new List<string>();
             
             foreach (var kvp in opponentPieces)
             {
                 AddToPieces(kvp.Value, kvp.Key);
+                opponentPos.Add(kvp.Key);
+            }
+            
+            foreach (var kvp in ownPieces)
+            {
+                AddToPieces(kvp.Value, kvp.Key);
+                ownPos.Add(kvp.Key);
+            }
+
+            // Update RuleChecker instances with pieces positions
+            foreach (var piece in OwnPieces)
+            {
+                piece.RuleChecker.OpponentPieces = opponentPos;
+                piece.RuleChecker.OwnPieces = ownPos;
             }
         }
 

@@ -13,7 +13,7 @@ namespace ChessAgent
 
         private const int PositiveInf = int.MaxValue;
         private const int NegativeInf = int.MinValue;
-        private const int MaxComputationTimeInMilliseconds = 200;
+        private const int MaxComputationTimeInMilliseconds = 225;
         
         public MinimaxDecision(Func<T, int> heuristicCostEstimate)
         {

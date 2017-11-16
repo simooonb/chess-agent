@@ -7,9 +7,10 @@ namespace ChessAgent
     {
         public bool HasMoved = false;
        
-        public override List<string> LegalMoves(string @from, PieceColor color, List<string> opponentPieces)
+        public override List<string> LegalMoves(string from, PieceColor color)
         {
             // TODO: Add castle
+            // TODO: Check opponent's king position
             
             var legalMoves = new List<string>();
             var rowIndex = Array.IndexOf(LegalRows, from[1].ToString());
@@ -45,7 +46,7 @@ namespace ChessAgent
             return legalMoves;
         }
         
-        public override bool IsMoveLegal(string from, string to, PieceColor color, List<string> opponentPieces)
+        public override bool IsMoveLegal(string from, string to, PieceColor color)
         {
             return Math.Abs(from[1] - to[1]) <= 1 && Math.Abs(from[0] - to[1]) <= 1;
         }

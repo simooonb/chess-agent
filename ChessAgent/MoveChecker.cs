@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
 namespace ChessAgent
 {
@@ -9,8 +8,16 @@ namespace ChessAgent
     {
         public readonly string[] LegalColumns = {"a", "b", "c", "d", "e", "f", "g", "h" };
         public readonly string[] LegalRows = {"1", "2", "3", "4", "5", "6", "7", "8"};
+        public List<string> OpponentPieces;
+        public List<string> OwnPieces;
 
-        public abstract List<string> LegalMoves(string @from, PieceColor color, List<string> opponentPieces);
+        /// <summary>
+        /// Generate legal moves for a piece.
+        /// </summary>
+        /// <param name="from">Source position.</param>
+        /// <param name="color">Color of the piece.</param>
+        /// <returns>A list of legal moves for this piece.</returns>
+        public abstract List<string> LegalMoves(string from, PieceColor color);
 
         /// <summary>
         /// Check if the move is legal, based on the piece type.
@@ -18,9 +25,8 @@ namespace ChessAgent
         /// <param name="from">Source position.</param>
         /// <param name="to">Destination position.</param>
         /// <param name="color">The piece color</param>
-        /// <param name="opponentPieces">The opponent pieces' positions.</param>
         /// <returns>True if the move is in the board, false otherwise.</returns>
-        public abstract bool IsMoveLegal(string from, string to, PieceColor color, List<string> opponentPieces);
+        public abstract bool IsMoveLegal(string from, string to, PieceColor color);
         
         /// <summary>
         /// Check if a position is in the board.
@@ -32,76 +38,191 @@ namespace ChessAgent
             return LegalRows.Contains(pos[1].ToString()) && LegalColumns.Contains(pos[0].ToString());
         }
 
+        /// <summary>
+        /// Generates a list with others positions on the same row, limited by the opponent's pieces.
+        /// </summary>
+        /// <param name="position">Origin's position.</param>
+        /// <returns>A list containing positions of other positions.</returns>
         public List<string> GenerateOtherRowPositions(string position)
         {
             var pos = new List<string>();
-            var temp = new[] {"", position[1].ToString()};
+            int oppNegMax = -8, oppPosMin = 8;  // Default values
+            int ownNegMax = -8, ownPosMin = 8;
 
-            foreach (var col in LegalColumns)
+            var ownPiecesOnSameRow = OwnPieces.Where(piece => position[1].Equals(piece[1])).ToList();
+            var opponentPiecesOnSameRow = OpponentPieces.Where(piece => position[1].Equals(piece[1])).ToList();
+            
+            // Find the closest pieces (own and opponent) to the position
+            
+            foreach (var piece in opponentPiecesOnSameRow)
             {
-                if (position[0].ToString() == col) continue;
+                var substractCols = piece[0] - position[0];
                 
-                temp[0] = col;
-                pos.Add(string.Concat(temp[0], temp[1]));
+                if (substractCols > 0 && oppPosMin > substractCols)
+                    oppPosMin = substractCols;
+                else if (substractCols < 0 && oppNegMax < substractCols)
+                    oppNegMax = substractCols;
+            }
+
+            foreach (var piece in ownPiecesOnSameRow)
+            {
+                // Same position
+                if (piece.Equals(position)) continue;
+                
+                var substractCols = piece[0] - position[0];
+
+                if (substractCols > 0 && ownPosMin > substractCols)
+                    ownPosMin = substractCols;
+                else if (substractCols < 0 && ownNegMax < substractCols)
+                    ownNegMax = substractCols;
+            }
+
+            // +1 or -1 in order to not include our own piece's position
+            var closestNeg = Math.Max(ownNegMax + 1, oppNegMax);
+            var closestPos = Math.Min(ownPosMin - 1, oppPosMin);
+            var positionColIndex = Array.IndexOf(LegalColumns, position[0].ToString());
+
+            for (var colIndexOffset = closestNeg; colIndexOffset <= closestPos; colIndexOffset++)
+            {
+                var colIdx = positionColIndex + colIndexOffset;
+                
+                // Not in board
+                if (colIdx < 0 || colIdx > 7) continue;
+                
+                // Same position
+                if (colIdx.Equals(positionColIndex)) continue;
+                
+                var tempPos = string.Concat(LegalColumns[colIdx], position[1]);
+                pos.Add(tempPos);
             }
 
             return pos;
         }
         
+        /// <summary>
+        /// Generates a list with others positions on the same column, limited by the opponent's pieces.
+        /// </summary>
+        /// <param name="position">Origin's position.</param>
+        /// <returns>A list containing positions of other positions.</returns>
         public List<string> GenerateOtherColumnPositions(string position)
         {
             var pos = new List<string>();
-            var temp = new[] {position[0].ToString(), ""};
+            int oppNegMax = -8, oppPosMin = 8;  // Default values
+            int ownNegMax = -8, ownPosMin = 8;
 
-            foreach (var row in LegalRows)
+            var ownPiecesOnSameCol = OwnPieces.Where(piece => position[0].Equals(piece[0])).ToList();
+            var opponentPiecesOnSameCol = OpponentPieces.Where(piece => position[0].Equals(piece[0])).ToList();
+            
+            // Find the closest pieces (own and opponent) to the position
+            
+            foreach (var piece in opponentPiecesOnSameCol)
             {
-                if (position[1].ToString() == row) continue;
+                var substractRows = piece[1] - position[1];
                 
-                temp[1] = row;
-                pos.Add(string.Concat(temp[0], temp[1]));
+                if (substractRows > 0 && oppPosMin > substractRows)
+                    oppPosMin = substractRows;
+                else if (substractRows < 0 && oppNegMax < substractRows)
+                    oppNegMax = substractRows;
+            }
+
+            foreach (var piece in ownPiecesOnSameCol)
+            {
+                // Same position
+                if (piece.Equals(position)) continue;
+                
+                var substractRows = piece[1] - position[1];
+
+                if (substractRows > 0 && ownPosMin > substractRows)
+                    ownPosMin = substractRows;
+                else if (substractRows < 0 && ownNegMax < substractRows)
+                    ownNegMax = substractRows;
+            }
+
+            // +1 or -1 in order to not include our own piece's position
+            var closestNeg = Math.Max(ownNegMax + 1, oppNegMax);
+            var closestPos = Math.Min(ownPosMin - 1, oppPosMin);
+            var positionRowIndex = Array.IndexOf(LegalRows, position[1].ToString());
+
+            for (var rowIndexOffset = closestNeg; rowIndexOffset <= closestPos; rowIndexOffset++)
+            {
+                var rowIdx = positionRowIndex + rowIndexOffset;
+                
+                // Not in board
+                if (rowIdx < 0 || rowIdx > 7) continue;
+                
+                // Same position
+                if (rowIdx.Equals(positionRowIndex)) continue;
+                
+                var tempPos = string.Concat(position[0], LegalRows[rowIdx]);
+                pos.Add(tempPos);
             }
 
             return pos;
         }
 
+        /// <summary>
+        /// Generates a list with others positions of the two diagonals, limited by the opponent's pieces.
+        /// </summary>
+        /// <param name="position">Origin's position.</param>
+        /// <returns>A list containing positions of other positions.</returns>
         public List<string> GenerateOtherDiagPositions(string position)
         {
             var pos = new List<string>();
-            var colIndex = Array.IndexOf(LegalColumns, position[0].ToString());
-            var rowIndex = Array.IndexOf(LegalRows, position[1].ToString());
+            int oppNegMax = -8, oppPosMin = 8;  // Default values
+            int ownNegMax = -8, ownPosMin = 8;
+
+            var ownPiecesOnSameDiag = OwnPieces.Where(piece =>
+                Math.Abs(int.Parse((piece[1] - position[1]).ToString())) == 
+                Math.Abs(int.Parse((piece[0] - position[0]).ToString()))).ToList();
+
+            var opponentPiecesOnSameDiag = OpponentPieces.Where(piece => 
+                Math.Abs(int.Parse((piece[1] - position[1]).ToString())) == 
+                Math.Abs(int.Parse((piece[0] - position[0]).ToString()))).ToList();
             
-            // TODO: One position is missing sometimes 
+            // Find the closest pieces (own and opponent) to the position
             
-            for (var i = 1; i <= 8; i++)
+            foreach (var piece in opponentPiecesOnSameDiag)
             {
-                if (position[1].ToString() == LegalRows[i-1] || position[0].ToString() == LegalColumns[i-1])
-                    continue;
-
-                if (colIndex + i < 8 && rowIndex - i >= 0)
-                {
-                    pos.Add(string.Concat(LegalColumns[colIndex + i], LegalRows[rowIndex - i]));
-                    //Console.Write(string.Concat(LegalColumns[colIndex + i], LegalRows[rowIndex - i]) + " ");
-                }
-
-                if (colIndex + i < 8 && rowIndex + i < 8)
-                {
-                    pos.Add(string.Concat(LegalColumns[colIndex + i], LegalRows[rowIndex + i]));
-                    //Console.Write(string.Concat(LegalColumns[colIndex + i], LegalRows[rowIndex + i]) + " ");
-                }
-
-                if (colIndex - i >= 0 && rowIndex - i >= 0)
-                {
-                    pos.Add(string.Concat(LegalColumns[colIndex - i], LegalRows[rowIndex - i]));
-                    //Console.Write(string.Concat(LegalColumns[colIndex - i], LegalRows[rowIndex - i]) + " ");
-                }
-
-                if (colIndex - i >= 0 && rowIndex + i < 8)
-                {
-                    pos.Add(string.Concat(LegalColumns[colIndex - i], LegalRows[rowIndex + i]));
-                    //Console.Write(string.Concat(LegalColumns[colIndex - i], LegalRows[rowIndex + i]) + " ");
-                }
+                var offset = piece[1] - position[1];
+                
+                if (offset > 0 && oppPosMin > offset)
+                    oppPosMin = offset;
+                else if (offset < 0 && oppNegMax < offset)
+                    oppNegMax = offset;
             }
-            //Console.WriteLine();
+
+            foreach (var piece in ownPiecesOnSameDiag)
+            {
+                // Same position
+                if (piece.Equals(position)) continue;
+                
+                var offset = piece[1] - position[1];
+
+                if (offset > 0 && ownPosMin > offset)
+                    ownPosMin = offset;
+                else if (offset < 0 && ownNegMax < offset)
+                    ownNegMax = offset;
+            }
+
+            // +1 or -1 in order to not include our own piece's position
+            var closestNeg = Math.Max(ownNegMax + 1, oppNegMax);
+            var closestPos = Math.Min(ownPosMin - 1, oppPosMin);
+            var positionRowIndex = Array.IndexOf(LegalRows, position[1].ToString());
+
+            for (var rowIndexOffset = closestNeg; rowIndexOffset <= closestPos; rowIndexOffset++)
+            {
+                var rowIdx = positionRowIndex + rowIndexOffset;
+                
+                // Not in board
+                if (rowIdx < 0 || rowIdx > 7) continue;
+                
+                // Same position
+                if (rowIdx.Equals(positionRowIndex)) continue;
+                
+                var tempPos = string.Concat(position[0], LegalRows[rowIdx]);
+                pos.Add(tempPos);
+            }
+
             return pos;
         }
     }

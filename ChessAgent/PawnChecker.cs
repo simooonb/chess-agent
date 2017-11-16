@@ -5,7 +5,7 @@ namespace ChessAgent
 {
     public class PawnChecker : MoveChecker
     {
-        public override List<string> LegalMoves(string @from, PieceColor color, List<string> opponentPieces)
+        public override List<string> LegalMoves(string from, PieceColor color)
         {
             var legalMoves = new List<string>();
             int nextPlay;
@@ -24,7 +24,7 @@ namespace ChessAgent
                     temp = string.Concat(from[0], nextPlay);
                     
                     // Check if the square is available
-                    if (!opponentPieces.Contains(temp))
+                    if (!OpponentPieces.Contains(temp))
                         legalMoves.Add(temp);
 
                     // Attacking pawn
@@ -32,7 +32,7 @@ namespace ChessAgent
                     {
                         temp = string.Concat(LegalColumns[colIndex + 1], nextPlay);
                         
-                        if (opponentPieces.Contains(temp))
+                        if (OpponentPieces.Contains(temp))
                             legalMoves.Add(temp);
                     }
 
@@ -40,7 +40,7 @@ namespace ChessAgent
                     {
                         temp = string.Concat(LegalColumns[colIndex - 1], nextPlay);
 
-                        if (opponentPieces.Contains(temp))
+                        if (OpponentPieces.Contains(temp))
                             legalMoves.Add(temp);
                     }
                 }
@@ -48,7 +48,7 @@ namespace ChessAgent
                 // First pawn move
                 temp = string.Concat(from[0], 4);
                 
-                if (int.Parse(from[1].ToString()).Equals(2) && !opponentPieces.Contains(temp))
+                if (int.Parse(from[1].ToString()).Equals(2) && !OpponentPieces.Contains(temp))
                     legalMoves.Add(temp);
             }
             else if (color.Equals(PieceColor.Black))
@@ -61,7 +61,7 @@ namespace ChessAgent
                     temp = string.Concat(from[0], nextPlay);
                     
                     // Check if the square is available
-                    if (!opponentPieces.Contains(temp))
+                    if (!OpponentPieces.Contains(temp))
                         legalMoves.Add(temp);
 
                     // Attacking pawn
@@ -69,7 +69,7 @@ namespace ChessAgent
                     {
                         temp = string.Concat(LegalColumns[colIndex + 1], nextPlay);
                         
-                        if (opponentPieces.Contains(temp))
+                        if (OpponentPieces.Contains(temp))
                             legalMoves.Add(temp);
                     }
 
@@ -77,7 +77,7 @@ namespace ChessAgent
                     {
                         temp = string.Concat(LegalColumns[colIndex - 1], nextPlay);
                         
-                        if (opponentPieces.Contains(temp))
+                        if (OpponentPieces.Contains(temp))
                             legalMoves.Add(temp);
                     }
                 }
@@ -85,16 +85,16 @@ namespace ChessAgent
                 // First pawn move
                 temp = string.Concat(from[0], 5);
                 
-                if (int.Parse(from[1].ToString()).Equals(7) && !opponentPieces.Contains(temp))
+                if (int.Parse(from[1].ToString()).Equals(7) && !OpponentPieces.Contains(temp))
                     legalMoves.Add(temp);
             }
 
             return legalMoves;
         }
         
-        public override bool IsMoveLegal(string from, string to, PieceColor color, List<string> opponentPieces)
+        public override bool IsMoveLegal(string from, string to, PieceColor color)
         {
-            return LegalMoves(@from, color, opponentPieces).Contains(to);
+            return LegalMoves(from, color).Contains(to);
         }
     }
 }

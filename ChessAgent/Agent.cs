@@ -15,11 +15,20 @@ namespace ChessAgent
             _board = new BoardState(color);
         }
         
+        /// <summary>
+        /// Update inner state based on environment's input.
+        /// </summary>
+        /// <param name="ownPieces">Our pieces' positions.</param>
+        /// <param name="opponentPieces">Opponent pieces' positions.</param>
         public void ObserveEnvironmentAndUpdateState(Dictionary<string, int> ownPieces, Dictionary<string, int> opponentPieces)
         {
             _board.Update(ownPieces, opponentPieces);
         }
 
+        /// <summary>
+        /// Choose a move.
+        /// </summary>
+        /// <returns>The move chosen as a string array.</returns>
         public string[] ChooseMove()
         {
             var move = new[] { "", "", "D" };  // Queen promotion is almost always the best choice (good enough here)
@@ -27,25 +36,30 @@ namespace ChessAgent
             var rnd = new Random();
             var legalMoves = ComputeLegalMovesAvailable();
             
-            move[0] = legalMoves[1][0];  // From
-            move[1] = legalMoves[1][1];  // To
+            Console.WriteLine("legal moves count: " + legalMoves.Count);
+            
+            // TODO: Add minimax algorithm
+            
+            move[0] = legalMoves[0][0];  // From
+            move[1] = legalMoves[0][1];  // To
 
             return move;
         }
-
-        public List<string[]> ComputeLegalMovesAvailable()
+        
+        private List<string[]> ComputeLegalMovesAvailable()
         {
             var legalMoves = new List<string[]>();
             var ownPiecesPos = _board.OwnPieces.Select(pieces => pieces.Position).ToList();
-            var oppPiecesPos = _board.OpponentPieces.Select(pieces => pieces.Position).ToList();
 
             foreach (var piece in _board.OwnPieces)
             {
                 // Compute every legal move
-                var subLegalMoves = piece.RuleChecker.LegalMoves(piece.Position, Color, oppPiecesPos);
+                var subLegalMoves = piece.RuleChecker.LegalMoves(piece.Position, Color);
+
+                // Remove our pieces from legal moves
+                subLegalMoves.RemoveAll(move => ownPiecesPos.Contains(move));
                 
-                // Remove positions where we have a piece
-                subLegalMoves.RemoveAll(s => ownPiecesPos.Contains(s));
+                // TODO: Verify if king is in check before adding to list
 
                 // Add to list
                 foreach (var move in subLegalMoves)
