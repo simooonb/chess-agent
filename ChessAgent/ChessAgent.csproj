@@ -42,20 +42,16 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Agent.cs" />
-    <Compile Include="BishopChecker.cs" />
-    <Compile Include="BoardState.cs" />
+    <Compile Include="Board.cs" />
+    <Compile Include="Evaluation.cs" />
+    <Compile Include="Move.cs" />
     <Compile Include="PieceColor.cs" />
     <Compile Include="DirectedWeightedGraph.cs" />
-    <Compile Include="KingChecker.cs" />
-    <Compile Include="KnightChecker.cs" />
     <Compile Include="MinimaxDecision.cs" />
-    <Compile Include="PawnChecker.cs" />
     <Compile Include="Piece.cs" />
+    <Compile Include="PieceType.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MoveChecker.cs" />
-    <Compile Include="QueenChecker.cs" />
-    <Compile Include="RookChecker.cs" />
     <Compile Include="WeightedEdge.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

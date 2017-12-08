@@ -6,23 +6,21 @@ namespace ChessAgent
 {
     public class Agent
     {
-        private BoardState _board;
+        private Board _board;
         public PieceColor Color { get; private set; }
 
         public Agent(PieceColor color)
         {
             Color = color;
-            _board = new BoardState(color);
         }
-        
+
         /// <summary>
         /// Update inner state based on environment's input.
         /// </summary>
-        /// <param name="ownPieces">Our pieces' positions.</param>
-        /// <param name="opponentPieces">Opponent pieces' positions.</param>
-        public void ObserveEnvironmentAndUpdateState(Dictionary<string, int> ownPieces, Dictionary<string, int> opponentPieces)
+        /// <param name="pieces">The piecse of the board.</param>
+        public void ObserveEnvironmentAndUpdateState(int[] pieces)
         {
-            _board.Update(ownPieces, opponentPieces);
+            _board = new Board(pieces);
         }
 
         /// <summary>
@@ -32,43 +30,20 @@ namespace ChessAgent
         public string[] ChooseMove()
         {
             var move = new[] { "", "", "D" };  // Queen promotion is almost always the best choice (good enough here)
-            var empty = _board.EmptySquares;
-            var rnd = new Random();
-            var legalMoves = ComputeLegalMovesAvailable();
+            var legalMoves = _board.GenerateMovesFor(Color);
             
+            var minimax = new MinimaxDecision<Board>(Evaluation.Evaluate);
+            
+            var rnd = new Random();
+            var index = rnd.Next(legalMoves.Count);
+            
+            Console.WriteLine("position's score: " + Evaluation.Evaluate(_board));
             Console.WriteLine("legal moves count: " + legalMoves.Count);
             
-            // TODO: Add minimax algorithm
-            
-            move[0] = legalMoves[0][0];  // From
-            move[1] = legalMoves[0][1];  // To
+            move[0] = legalMoves[index].From;  // From
+            move[1] = legalMoves[index].To;  // To
 
             return move;
-        }
-        
-        private List<string[]> ComputeLegalMovesAvailable()
-        {
-            var legalMoves = new List<string[]>();
-            var ownPiecesPos = _board.OwnPieces.Select(pieces => pieces.Position).ToList();
-
-            foreach (var piece in _board.OwnPieces)
-            {
-                // Compute every legal move
-                var subLegalMoves = piece.RuleChecker.LegalMoves(piece.Position, Color);
-
-                // Remove our pieces from legal moves
-                subLegalMoves.RemoveAll(move => ownPiecesPos.Contains(move));
-                
-                // TODO: Verify if king is in check before adding to list
-
-                // Add to list
-                foreach (var move in subLegalMoves)
-                {
-                    legalMoves.Add(new[] { piece.Position, move });
-                }
-            }
-            
-            return legalMoves;
         }
     }
 }

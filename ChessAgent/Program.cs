@@ -10,7 +10,7 @@ namespace ChessAgent
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static void Main2(string[] args)
         {
             try {
                 var agent = new Agent(PieceColor.White);
@@ -64,19 +64,19 @@ namespace ChessAgent
 
                                 stopwatch.Start();
                                     
-                                var myPieces = new Dictionary<string, int>();
-                                for (var i = 0; i < tabVal.Length; i++)
-                                {
-                                    if (tabVal[i] > 0) myPieces.Add(tabCoord[i], tabVal[i]);
-                                }
-
-                                var opponentPieces = new Dictionary<string, int>();
-                                for (var i = 0; i < tabVal.Length; i++)
-                                {
-                                    if (tabVal[i] < 0) opponentPieces.Add(tabCoord[i], tabVal[i]);
-                                }
+//                                var myPieces = new Dictionary<string, int>();
+//                                for (var i = 0; i < tabVal.Length; i++)
+//                                {
+//                                    if (tabVal[i] > 0) myPieces.Add(tabCoord[i], tabVal[i]);
+//                                }
+//
+//                                var opponentPieces = new Dictionary<string, int>();
+//                                for (var i = 0; i < tabVal.Length; i++)
+//                                {
+//                                    if (tabVal[i] < 0) opponentPieces.Add(tabCoord[i], tabVal[i]);
+//                                }
                                 
-                                agent.ObserveEnvironmentAndUpdateState(myPieces, opponentPieces);
+                                agent.ObserveEnvironmentAndUpdateState(tabVal);
                                 var coord = agent.ChooseMove();
                                 
                                 stopwatch.Stop();

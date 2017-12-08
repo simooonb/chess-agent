@@ -30,6 +30,20 @@ namespace ChessAgent
             _keepComputing = false;
         }
 
+        public void InitialiseGraph(T source, T[] nodes)
+        {
+            _graph = new DirectedWeightedGraph<T>();
+            _graph.AddNode(source);
+            _graph.AddNodes(nodes);
+
+            foreach (var node in _graph.Nodes)
+            {
+                if (node.Equals(source)) continue;
+
+                _graph.AddEdge(source, node, 1);
+            }
+        }
+
         /// <summary>
         /// Compute the next best move, based on the game's graph.
         /// </summary>
@@ -93,6 +107,6 @@ namespace ChessAgent
 
                 return bestValue;
             }
-        }
+        }        
     }
 }
