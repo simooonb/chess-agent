@@ -394,6 +394,35 @@ namespace ChessAgent
 
             return neighbors;
         }
+        
+        /// <summary>
+        /// Allow graph debugging.
+        /// </summary>
+        public string Trace()
+        {
+            var output = string.Empty;
+
+            foreach (var n in _nodes)
+            {
+                if (n == null)
+                    continue;
+
+                var node = (T) n;
+                var adjacents = string.Empty;
+
+                output = string.Format("{0}\r\n{1}: [", output, node);
+
+                foreach (var adjacentNode in NeighborsMap(node))
+                    adjacents = string.Format("{0}{1}({2}), ", adjacents, adjacentNode.Key, adjacentNode.Value);
+
+                if (adjacents.Length > 0)
+                    adjacents = adjacents.TrimEnd(',', ' ');
+
+                output = string.Format("{0}{1}]", output, adjacents);
+            }
+
+            return output;
+        }
 
         /// <summary>
         /// Clear graph.

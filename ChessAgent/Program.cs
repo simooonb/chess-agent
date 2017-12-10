@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.MemoryMappedFiles;
@@ -10,7 +9,7 @@ namespace ChessAgent
 {
     public class Program
     {
-        public static void Main2(string[] args)
+        public static void Main(string[] args)
         {
             try {
                 var agent = new Agent(PieceColor.White);

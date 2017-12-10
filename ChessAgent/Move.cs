@@ -6,6 +6,7 @@
         public string To { get; private set; }
         public PieceType Type { get; private set; }
         public PieceColor Color { get; private set; }
+        public PieceType? PieceCaptured { get; set; }
 
         public Move(string from, string to, PieceType type, PieceColor color)
         {
@@ -13,6 +14,7 @@
             To = to;
             Type = type;
             Color = color;
+            PieceCaptured = null;
         }
 
         public override string ToString()

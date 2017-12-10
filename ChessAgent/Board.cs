@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -20,6 +21,9 @@ namespace ChessAgent
         
         // Pieces bitboards
         public ulong[][] Pieces;
+
+        public PieceColor ColorPlaying = PieceColor.White;
+        public Stack<Move> MovesPlayed = new Stack<Move>();
         
         // Columns and rows bitboards
         private const ulong ACol = 0x0101010101010101;
@@ -54,7 +58,7 @@ namespace ChessAgent
             13, 18,  8, 12,  7,  6,  5, 63
         };
 
-        private static readonly string[] EnumSquare =
+        public readonly string[] EnumSquare =
         {
             "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
             "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
@@ -298,7 +302,7 @@ namespace ChessAgent
             get { return Count(QueensAttackPattern(WhiteQueens) & ~WhitePieces); }
         }
         
-        public int WhiteRooksobility
+        public int WhiteRooksMobility
         {
             get { return Count(RooksAttackPattern(WhiteRooks) & ~WhitePieces); }
         }
@@ -322,7 +326,7 @@ namespace ChessAgent
         {
             get
             {
-                return WhiteKingMobility + WhiteQueensMobility + WhiteRooksobility + WhiteBishopsMobility +
+                return WhiteKingMobility + WhiteQueensMobility + WhiteRooksMobility + WhiteBishopsMobility +
                        WhiteKnightsMobility + WhitePawnsMobility;
             }
         }
@@ -337,7 +341,7 @@ namespace ChessAgent
             get { return Count(QueensAttackPattern(BlackQueens) & ~BlackPieces); }
         }
         
-        public int BlackRooksobility
+        public int BlackRooksMobility
         {
             get { return Count(RooksAttackPattern(BlackRooks) & ~BlackPieces); }
         }
@@ -361,7 +365,7 @@ namespace ChessAgent
         {
             get
             {
-                return BlackKingMobility + BlackQueensMobility + BlackRooksobility + BlackBishopsMobility +
+                return BlackKingMobility + BlackQueensMobility + BlackRooksMobility + BlackBishopsMobility +
                        BlackKnightsMobility + BlackPawnsMobility;
             }
         }
@@ -419,6 +423,11 @@ namespace ChessAgent
                        (BlackPawnsSingleAttacks() & ~WhitePawnsDoubleAttacks());
             }
         }
+
+        public int WhiteKingCount
+        {
+            get { return Count(WhiteKing); }
+        }
         
         public int WhiteQueensCount
         {
@@ -443,6 +452,11 @@ namespace ChessAgent
         public int WhitePawnsCount
         {
             get { return Count(WhitePawns); }
+        }
+
+        public int BlackKingCount
+        {
+            get { return Count(BlackKing); }
         }
         
         public int BlackQueensCount
@@ -493,14 +507,42 @@ namespace ChessAgent
             return moves;
         }
 
+        public List<Move> GenerateNextMoves()
+        {
+            return GenerateMovesFor(ColorPlaying);
+        }
+
+        public Board[] GenerateBoardsFromMoves(IEnumerable<Move> moves)
+        {
+            var boards = new List<Board>();
+
+            foreach (var move in moves)
+            {
+                var board = new Board(Pieces);
+                board.PlayMove(move);
+                
+                // If player just played and still is in check
+                if (move.Color == PieceColor.White && !board.IsWhiteKingInCheck)
+                    boards.Add(board);
+                else if (move.Color == PieceColor.Black && !board.IsBlackKingInCheck)
+                    boards.Add(board);
+            }
+
+            return boards.ToArray();
+        }
+
         public void PlayMove(Move move)
         {
+            Debug.Assert(move.Color == ColorPlaying);
+            if (move.Color != ColorPlaying)
+                return;
+            
             var fromIdx = Array.IndexOf(EnumSquare, move.From);
 
             // Special cases first
             
             // Left castle
-            if (move.To == "leftcastle")
+            if (move.To == "grand roque")
             {
                 if (move.Color == PieceColor.White)
                 {
@@ -516,12 +558,13 @@ namespace ChessAgent
                     Pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "d8");
                     Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "a8"));
                 }
-
-                return;  // No capture here
+                
+                ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
+                MovesPlayed.Push(move);
+                return;
             }
-            
             // Right castle
-            if (move.To == "rightcastle")
+            if (move.To == "petit roque")
             {
                 if (move.Color == PieceColor.White)
                 {
@@ -538,6 +581,8 @@ namespace ChessAgent
                     Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "h8"));
                 }
 
+                ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
+                MovesPlayed.Push(move);
                 return;  // No capture here
             }
             
@@ -567,7 +612,10 @@ namespace ChessAgent
                 
             // If there was a black piece there... (as a white piece)
             if (move.Color == PieceColor.White && type != null)
-                Pieces[(int) PieceColor.Black][(int) type] &= (ulong) ~(1 << toIdx);  // Delete the captured piece
+            {
+                Pieces[(int) PieceColor.Black][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
+                move.PieceCaptured = type;                                           // And remember it
+            }
             else
             {
                 if (((WhitePawns >> toIdx) & 1) == 1)
@@ -586,9 +634,43 @@ namespace ChessAgent
                     type = null;
 
                 // If there was a white piece there... (as a black piece)
-                if (move.Color == PieceColor.White && type != null)
-                    Pieces[(int) PieceColor.Black][(int) type] &= (ulong) ~(1 << toIdx);  // Delete the captured piece
+                if (move.Color == PieceColor.Black && type != null)
+                {
+                    Pieces[(int) PieceColor.White][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
+                    move.PieceCaptured = type;                                           // And remember it
+                }
             }
+
+            // Opponent's turn now
+            ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
+            
+            // Push to the history of moves
+            MovesPlayed.Push(move);
+        }
+
+        /// <summary>
+        /// Undo last move played.
+        /// </summary>
+        public void Undo()
+        {
+            var move = MovesPlayed.Pop();
+
+            // Inverse positions
+            var fromIdx = Array.IndexOf(EnumSquare, move.To);
+            var toIdx = Array.IndexOf(EnumSquare, move.From);
+            
+            Pieces[(int) move.Color][(int) move.Type] |= (ulong) 1 << toIdx;     // Set the new position
+            Pieces[(int) move.Color][(int) move.Type] &= ~((ulong) 1 << fromIdx);  // Remove the old position
+
+            if (move.PieceCaptured != null)
+            {
+                if (move.Color == PieceColor.White)
+                    Pieces[(int) PieceColor.Black][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
+                else
+                    Pieces[(int) PieceColor.White][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
+            }
+
+            ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
         }
                 
         public List<string> BitboardToStringList(ulong bb)
@@ -624,10 +706,10 @@ namespace ChessAgent
             moves.AddRange(pattern.Select(move => new Move(origin[0], move, PieceType.King, color)));
             
             if (IsLeftCastleAllowedFor(color))
-                moves.Add(new Move(origin[0], "leftcastle", PieceType.King, color));
+                moves.Add(new Move("grand roque", "grand roque", PieceType.King, color));
             
             if (IsRightCastleAllowedFor(color))
-                moves.Add(new Move(origin[0], "rightcastle", PieceType.King, color));
+                moves.Add(new Move("petit roque", "petit roque", PieceType.King, color));
 
             return moves;
         }
@@ -1407,7 +1489,7 @@ namespace ChessAgent
             return Index64[((bb ^ (bb-1)) * magic) >> 58];
         }
 
-        private static void Trace(ulong bb)
+        private static string Trace(ulong bb)
         {
             var sb = new StringBuilder();
             
@@ -1420,10 +1502,15 @@ namespace ChessAgent
                 sb.Append(" ");
             }
             
-            Console.WriteLine(sb.ToString());
+             return sb.ToString();
         }
 
-        public static void Main(string[] args)
+        public override string ToString()
+        {
+            return Trace(OccupiedSpace);
+        }
+
+        public static void Main2(string[] args)
         {
             int[] pieces = {
                 -LeftRook, -LeftKnight,-Bishop,     -Queen, -King, -Bishop,     -RightKnight, -RightRook,
@@ -1438,21 +1525,14 @@ namespace ChessAgent
             
             var board = new Board(pieces);
             var whiteMoves = board.GenerateMovesFor(PieceColor.White);
-            
-            foreach (var move in whiteMoves)
-            {
-                Console.WriteLine(move);
-            }
-            
-            var blackMoves = board.GenerateMovesFor(PieceColor.Black);
 
-            foreach (var move in blackMoves)
-            {
-                Console.WriteLine(move);
-            }
+            board.PlayMove(whiteMoves[0]);
+
+            Console.WriteLine(board);
+
+            board.Undo();
             
-            Trace(board.WhitePieces);
-            Trace(board.BlackPieces);
+            Console.WriteLine(board);
         }
     }
 }

@@ -29,21 +29,16 @@ namespace ChessAgent
         /// <returns>The move chosen as a string array.</returns>
         public string[] ChooseMove()
         {
-            var move = new[] { "", "", "D" };  // Queen promotion is almost always the best choice (good enough here)
-            var legalMoves = _board.GenerateMovesFor(Color);
+            var moveArray = new[] { "", "", "D" };  // Queen promotion is almost always the best choice (good enough here)
+            var maximizingPlayer = Color == PieceColor.White;
             
-            var minimax = new MinimaxDecision<Board>(Evaluation.Evaluate);
-            
-            var rnd = new Random();
-            var index = rnd.Next(legalMoves.Count);
-            
-            Console.WriteLine("position's score: " + Evaluation.Evaluate(_board));
-            Console.WriteLine("legal moves count: " + legalMoves.Count);
-            
-            move[0] = legalMoves[index].From;  // From
-            move[1] = legalMoves[index].To;  // To
+            var minimax = new MinimaxDecision(Evaluation.Evaluate);
+            var move = minimax.MinimaxRoot(2, _board, maximizingPlayer);
+                        
+            moveArray[0] = move.From;  // From
+            moveArray[1] = move.To;  // To
 
-            return move;
+            return moveArray;
         }
     }
 }
