@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace ChessAgent
+﻿namespace ChessAgent
 {
     public class Agent
     {
@@ -20,7 +16,7 @@ namespace ChessAgent
         /// <param name="pieces">The piecse of the board.</param>
         public void ObserveEnvironmentAndUpdateState(int[] pieces)
         {
-            _board = new Board(pieces);
+            _board = new Board(pieces, Color);
         }
 
         /// <summary>
@@ -30,11 +26,11 @@ namespace ChessAgent
         public string[] ChooseMove()
         {
             var moveArray = new[] { "", "", "D" };  // Queen promotion is almost always the best choice (good enough here)
-            var maximizingPlayer = Color == PieceColor.White;
-            
-            var minimax = new MinimaxDecision(Evaluation.Evaluate);
-            var move = minimax.MinimaxRoot(2, _board, maximizingPlayer);
-                        
+            var eval = new Evaluation(Color);
+
+            var minimax = new MinimaxDecision(eval.Evaluate);
+            var move = minimax.MinimaxIterativeDeepening(_board, true);
+
             moveArray[0] = move.From;  // From
             moveArray[1] = move.To;  // To
 

@@ -79,7 +79,6 @@ namespace ChessAgent
                                 var coord = agent.ChooseMove();
                                 
                                 stopwatch.Stop();
-                                
                                 Console.WriteLine(stopwatch.ElapsedMilliseconds);
                                 Console.WriteLine(coord[0] + " " + coord[1]);
                                 stopwatch.Reset();

@@ -1,20 +1,20 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Timers;
 
 namespace ChessAgent
 {
     public class MinimaxDecision
     {
-        private DirectedWeightedGraph<Board> _graph;
+        private readonly TranspositionTable _tt = new TranspositionTable();
         private static bool _keepComputing = true;
+        private Move _oldBestMove;
         
         private readonly Timer _timer = new Timer();
         private readonly Func<Board, int> _heuristic;
 
         private const int PositiveInf = int.MaxValue;
         private const int NegativeInf = int.MinValue;
-        private const int MaxComputationTimeInMilliseconds = 225;
+        private const int MaxComputationTimeInMilliseconds = 200;
         
         public MinimaxDecision(Func<Board, int> heuristicCostEstimate)
         {
@@ -31,47 +31,29 @@ namespace ChessAgent
             _keepComputing = false;
         }
 
-//        public void InitialiseGraph(Board source)
-//        {
-//            _graph = new DirectedWeightedGraph<Board>();
-//            _graph.AddNode(source);
-//
-//            var nodes = source.GenerateBoardsFromMoves(source.GenerateNextMoves());
-//            _graph.AddNodes(nodes);
-//            _outerFrontier.AddRange(nodes);
-//            
-//            foreach (var node in _graph.Nodes)
-//            {
-//                if (node.Equals(source)) continue;
-//
-//                _graph.AddEdge(source, node, 1);
-//            }
-//        }
+        public Move MinimaxIterativeDeepening(Board game, bool maximizingPlayer)
+        {
+            _timer.Start();
+            
+            for (var depth = 1;; depth++)
+            {
+                var move = MinimaxRoot(depth, game, maximizingPlayer);
 
-//        /// <summary>
-//        /// Compute the next best move, based on the game's graph.
-//        /// </summary>
-//        /// <param name="graph">The graph of the game.</param>
-//        /// <param name="source">The actual game state.</param>
-//        /// <returns></returns>
-//        public void IterativeDeepeningAlphaBeta(DirectedWeightedGraph<Board> graph, Board source)
-//        {
-//            _graph = graph;
-//            var depth = 1;
-//
-//            _timer.Enabled = true;
-//            
-//            // TODO: Implement iterative deepening
-//            // TODO: Implement transposition table
-//            // TODO: Return a move
-//
-//            do
-//            {
-//                Minimax(source, depth, NegativeInf, PositiveInf, true);
-//            } while (_keepComputing);
-//
-//            _timer.Enabled = false;
-//        }
+                if (move != null)
+                    _oldBestMove = move;
+
+                if (!_keepComputing)
+                {
+                    Console.WriteLine(depth);
+                    break;
+                }
+            }
+            
+            _timer.Stop();
+            _keepComputing = true;
+
+            return _oldBestMove;
+        }
 
         public Move MinimaxRoot(int depth, Board game, bool maximizingPlayer)
         {
@@ -90,16 +72,28 @@ namespace ChessAgent
                     bestMoveValue = value;
                     bestMoveFound = newMove;
                 }
+
+                if (!_keepComputing)
+                    return null;
             }
 
             return bestMoveFound;
-        }
+        }    
 
         private int Minimax(Board node, int depth, int alpha, int beta, bool maximizingPlayer)
         {
+            int? val;
+
+            if ((val = _tt.ProbeHash(node, depth, alpha, beta)) != null)
+                return (int) val;
+            
             // Stop condition for recursion
-            if (depth <= 0)
-                return _heuristic(node);
+            if (depth <= 0 || !_keepComputing)
+            {
+                var eval = _heuristic(node);
+                _tt.RecordHash(node, null, depth, eval, TranspositionTableElement.Exact);
+                return eval;
+            }
 
             int bestValue;
             var newMoves = node.GenerateNextMoves();
@@ -117,9 +111,13 @@ namespace ChessAgent
                     alpha = Math.Max(alpha, bestValue);
 
                     if (beta <= alpha)
+                    {
+                        _tt.RecordHash(node, null, depth, alpha, TranspositionTableElement.Alpha);
                         break; // Beta cut-off
+                    }
                 }
 
+                _tt.RecordHash(node, null, depth, alpha, TranspositionTableElement.Exact);
                 return bestValue;
             }
             else  // Evaluating as the minimizing player
@@ -135,11 +133,15 @@ namespace ChessAgent
                     beta = Math.Min(beta, bestValue);
 
                     if (beta <= alpha)
+                    {
+                        _tt.RecordHash(node, null, depth, beta, TranspositionTableElement.Beta);
                         break; // Alpha cut-off
+                    }
                 }
-
+                
+                _tt.RecordHash(node, null, depth, alpha, TranspositionTableElement.Exact);
                 return bestValue;
             }
-        }        
+        }
     }
 }

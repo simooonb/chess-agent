@@ -1,28 +1,33 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 
 namespace ChessAgent
 {
-    public static class Evaluation
-    {       
+    public class Evaluation
+    {
+        private PieceColor _color;
+        
         /**
          * Constants.
          */
 
         // Weights
         
-        private const int MaterialWeight = 3;
-        private const int PositionWeight = 1;
-        private const int MobilityWeight = 2;
+        private const int MaterialWeight = 7;
+        private const int PositionWeight = 2;
+        private const int MobilityWeight = 1;
+        private const int KingSafetyWeight = 3;
         
+        private const int KingDiffWeight = 200;
         private const int QueenDiffWeight = 9;
         private const int RookDiffWeight = 5;
         private const int KnightDiffWeight = 3;
         private const int BishopDiffWeight = 3;
         private const int PawnDiffWeight = 1;
+
+        private const int MobilityDiffWeight = 2;
         
-        // Position bonus
+        // Position bonuses
         
         private static readonly int[] KnightPosition = 
         {
@@ -50,7 +55,7 @@ namespace ChessAgent
 
         private static readonly int[] WhitePawnPosition =
         {
-            0,  0,  0,  0,  0,  0,  0,  0,
+            20, 20, 20, 20, 20, 20, 20, 20,
             10, 10, 10, 10, 10, 10, 10, 10,
             2,  2,  4,  6,  6,  4,  2,  2,
             1,  1,  2,  5,  5,  2,  1,  1,
@@ -92,8 +97,8 @@ namespace ChessAgent
             -6, -8, -8,-10,-10, -8, -8, -6,
             -2, -6, -6, -8, -8, -6, -6, -2,
             -2, -4, -4, -4, -4, -4, -4, -2,
-             4,  4,  0,  0,  0,  0,  4,  4,
-             4,  6,  2,  0,  0,  2,  6,  4
+             1,  1,  0,  0,  0,  0,  1,  1,
+             4,  6,  1,  0,  0,  1,  6,  4
         };
 
         private static readonly int[] BlackPawnPosition =
@@ -105,7 +110,7 @@ namespace ChessAgent
             1,  1,  2,  5,  5,  2,  1,  1,
             2,  2,  4,  6,  6,  4,  2,  2,
             10, 10, 10, 10, 10, 10, 10, 10,
-            0,  0,  0,  0,  0,  0,  0,  0
+            20, 20, 20, 20, 20, 20, 20, 20
         };
 
         private static readonly int[] BlackBishopPosition =
@@ -123,19 +128,19 @@ namespace ChessAgent
         private static readonly int[] BlackRookPosition = 
         {
             0,  0,  0,  1,  1,  0,  0,  0,
-            -1,  0,  0,  0,  0,  0,  0, -1,
-            -1,  0,  0,  0,  0,  0,  0, -1,
-            -1,  0,  0,  0,  0,  0,  0, -1,
-            -1,  0,  0,  0,  0,  0,  0, -1,
-            -1,  0,  0,  0,  0,  0,  0, -1,
-            0,  0,  0,  0,  0,  0,  0,  0,
-            1,  2,  2,  2,  2,  2,  2,  1
+           -1,  0,  0,  0,  0,  0,  0, -1,
+           -1,  0,  0,  0,  0,  0,  0, -1,
+           -1,  0,  0,  0,  0,  0,  0, -1,
+           -1,  0,  0,  0,  0,  0,  0, -1,
+           -1,  0,  0,  0,  0,  0,  0, -1,
+            1,  2,  2,  2,  2,  2,  2,  1,
+            0,  0,  0,  0,  0,  0,  0,  0
         };
 
         private static readonly int[] BlackKingPosition =
         {
-            4,  6,  2,  0,  0,  2,  6,  4,
-            4,  4,  0,  0,  0,  0,  4,  4,
+             4,  6,  2,  0,  0,  2,  6,  4,
+             4,  4,  0,  0,  0,  0,  4,  4,
             -2, -4, -4, -4, -4, -4, -4, -2,
             -2, -6, -6, -8, -8, -6, -6, -2,
             -6, -8, -8,-10,-10, -8, -8, -6,
@@ -143,6 +148,11 @@ namespace ChessAgent
             -6, -8, -8,-10,-10, -8, -8, -6,
             -6, -8, -8,-10,-10, -8, -8, -6
         };
+
+        public Evaluation(PieceColor color)
+        {
+            _color = color;
+        }
         
         /**
          * Intermediate scores.
@@ -150,13 +160,14 @@ namespace ChessAgent
 
         private static int MaterialScore(Board b)
         {
-            return (b.WhiteQueensCount - b.BlackQueensCount)   * QueenDiffWeight +
-                   (b.WhiteRooksCount - b.BlackRooksCount)     * RookDiffWeight +
+            return (b.WhiteKingCount    - b.BlackKingCount)    * KingDiffWeight   + 
+                   (b.WhiteQueensCount  - b.BlackQueensCount)  * QueenDiffWeight  +
+                   (b.WhiteRooksCount   - b.BlackRooksCount)   * RookDiffWeight   +
                    (b.WhiteBishopsCount - b.BlackBishopsCount) * BishopDiffWeight +
                    (b.WhiteKnightsCount - b.BlackKnightsCount) * KnightDiffWeight +
-                   (b.WhitePawnsCount - b.BlackPawnsCount)     * PawnDiffWeight;
+                   (b.WhitePawnsCount   - b.BlackPawnsCount)   * PawnDiffWeight;
         }
-
+        
         private static int PositionScore(Board b)
         {            
             var whitePawnList = b.BitboardToStringList(b.WhitePawns);
@@ -198,20 +209,39 @@ namespace ChessAgent
 
         private static int MobilityScore(Board b)
         {
-            return b.WhitePiecesMobility - b.BlackPiecesMobility;
+            return (b.WhiteQueensMobility  - b.BlackQueensMobility   +
+                    b.WhiteRooksMobility   - b.BlackRooksMobility    +
+                    b.WhiteBishopsMobility - b.BlackBishopsMobility  +
+                    b.WhiteKnightsMobility - b.BlackKnightsMobility) * MobilityDiffWeight;
+        }
+
+        private static int KingSafetyScore(Board b)
+        {
+            var whiteKingSafetyScore = b.WhiteKingSafetyScore;
+            var blackKingSafetyScore = b.BlackKingSafetyScore;
+
+            if (b.ColorPlaying == PieceColor.White)
+                return -1 * whiteKingSafetyScore + blackKingSafetyScore;
+            if (b.ColorPlaying == PieceColor.Black)
+                return -1 * blackKingSafetyScore + whiteKingSafetyScore;
+
+            return 0;
         }
 
         /// <summary>
-        /// Evaluates the position, always according the the white.
-        /// A positive score indicates the position is better for the white pieces,
-        /// a negative one indicates the position is better for the black pieces.
+        /// Evaluates the position.
+        /// A positive score indicates the position is better for the current player,
+        /// a negative one indicates the position is better for the opponent.
         /// </summary>
         /// <returns>The position's score.</returns>
-        public static int Evaluate(Board board)
+        public int Evaluate(Board board)
         {
-            return MaterialScore(board) * MaterialWeight +
-                   PositionScore(board) * PositionWeight +
-                   MobilityScore(board) * MobilityWeight;
+            var scale = _color == PieceColor.White ? 1 : -1;
+            
+            return (MaterialScore(board)   * MaterialWeight    +
+                    PositionScore(board)   * PositionWeight    +
+                    MobilityScore(board)   * MobilityWeight    +
+                    KingSafetyScore(board) * KingSafetyWeight) * scale;
         }
     }
 }

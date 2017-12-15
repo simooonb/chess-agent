@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using Timer = System.Timers.Timer;
 
 namespace ChessAgent
 {
@@ -20,10 +22,10 @@ namespace ChessAgent
         private const int King = 6;
         
         // Pieces bitboards
-        public ulong[][] Pieces;
+        private ulong[][] _pieces;
 
-        public PieceColor ColorPlaying = PieceColor.White;
-        public Stack<Move> MovesPlayed = new Stack<Move>();
+        public PieceColor ColorPlaying;
+        private readonly Stack<Move> _movesPlayed = new Stack<Move>();
         
         // Columns and rows bitboards
         private const ulong ACol = 0x0101010101010101;
@@ -43,8 +45,6 @@ namespace ChessAgent
         private const ulong Row3 = Row8 << (8 * 5);
         private const ulong Row2 = Row8 << (8 * 6);
         private const ulong Row1 = Row8 << (8 * 7);
-
-        private const ulong DarkSquares = 0xaa55aa55aa55aa55;
 
         private static readonly int[] Index64 =
         {
@@ -70,73 +70,64 @@ namespace ChessAgent
             "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
         };
 
-        public Board(int[] pieces)
+        public Board(int[] pieces, PieceColor color)
         {
+            ColorPlaying = color;
             InitialiseBoard(pieces);
-        }
-
-        public Board(ulong[][] pieces)
-        {
-            Pieces = new ulong[2][];
-            Pieces[(int) PieceColor.White] = new ulong[6];
-            Pieces[(int) PieceColor.Black] = new ulong[6];
-            
-            pieces[(int) PieceColor.White].CopyTo(Pieces[(int) PieceColor.White], 0);
-            pieces[(int) PieceColor.Black].CopyTo(Pieces[(int) PieceColor.Black], 0);
         }
 
         private void InitialiseBoard(int[] pieces)
         {
-            Pieces = new ulong[2][];
+            _pieces = new ulong[2][];
             
             // Indexing by pieces' color
-            Pieces[(int) PieceColor.White] = new ulong[6];
-            Pieces[(int) PieceColor.Black] = new ulong[6];
+            _pieces[(int) PieceColor.White] = new ulong[6];
+            _pieces[(int) PieceColor.Black] = new ulong[6];
             
             // Indexing by pieces' type
-            Pieces[(int) PieceColor.White][(int) PieceType.Pawn] = 0;
-            Pieces[(int) PieceColor.White][(int) PieceType.Knight] = 0;
-            Pieces[(int) PieceColor.White][(int) PieceType.Bishop] = 0;
-            Pieces[(int) PieceColor.White][(int) PieceType.Rook] = 0;
-            Pieces[(int) PieceColor.White][(int) PieceType.Queen] = 0;
-            Pieces[(int) PieceColor.White][(int) PieceType.King] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.Pawn] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.Knight] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.Bishop] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.Rook] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.Queen] = 0;
+            _pieces[(int) PieceColor.White][(int) PieceType.King] = 0;
             
-            Pieces[(int) PieceColor.Black][(int) PieceType.Pawn] = 0;
-            Pieces[(int) PieceColor.Black][(int) PieceType.Knight] = 0;
-            Pieces[(int) PieceColor.Black][(int) PieceType.Bishop] = 0;
-            Pieces[(int) PieceColor.Black][(int) PieceType.Rook] = 0;
-            Pieces[(int) PieceColor.Black][(int) PieceType.Queen] = 0;
-            Pieces[(int) PieceColor.Black][(int) PieceType.King] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.Pawn] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.Knight] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.Bishop] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.Rook] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.Queen] = 0;
+            _pieces[(int) PieceColor.Black][(int) PieceType.King] = 0;
 
             for (short i = 0; i < 64; i++)
             {
                 // White pieces
                 if (pieces[i] == King)
-                    Pieces[(int) PieceColor.White][(int) PieceType.King] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.King] |= (ulong) 1 << i;
                 else if (pieces[i] == Queen)
-                    Pieces[(int) PieceColor.White][(int) PieceType.Queen] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.Queen] |= (ulong) 1 << i;
                 else if (pieces[i] == Bishop)
-                    Pieces[(int) PieceColor.White][(int) PieceType.Bishop] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.Bishop] |= (ulong) 1 << i;
                 else if (pieces[i] == LeftKnight || pieces[i] == RightKnight)
-                    Pieces[(int) PieceColor.White][(int) PieceType.Knight] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.Knight] |= (ulong) 1 << i;
                 else if (pieces[i] == LeftRook || pieces[i] == RightRook)
-                    Pieces[(int) PieceColor.White][(int) PieceType.Rook] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.Rook] |= (ulong) 1 << i;
                 else if (pieces[i] == Pawn || pieces[i] == PassingPawn)
-                    Pieces[(int) PieceColor.White][(int) PieceType.Pawn] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.White][(int) PieceType.Pawn] |= (ulong) 1 << i;
                 
                 // Black pieces
                 else if (pieces[i] == King * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.King] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.King] |= (ulong) 1 << i;
                 else if (pieces[i] == Queen * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.Queen] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.Queen] |= (ulong) 1 << i;
                 else if (pieces[i] == Bishop * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.Bishop] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.Bishop] |= (ulong) 1 << i;
                 else if (pieces[i] == LeftKnight * -1 || pieces[i] == RightKnight * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.Knight] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.Knight] |= (ulong) 1 << i;
                 else if (pieces[i] == LeftRook * -1 || pieces[i] == RightRook * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.Rook] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.Rook] |= (ulong) 1 << i;
                 else if (pieces[i] == Pawn * -1 || pieces[i] == PassingPawn * -1)
-                    Pieces[(int) PieceColor.Black][(int) PieceType.Pawn] |= (ulong) 1 << i;
+                    _pieces[(int) PieceColor.Black][(int) PieceType.Pawn] |= (ulong) 1 << i;
             }
         }
         
@@ -146,32 +137,32 @@ namespace ChessAgent
 
         public ulong WhiteKing
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.King]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.King]; }
         }
 
         public ulong WhiteQueens
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.Queen]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.Queen]; }
         }
 
         public ulong WhiteRooks
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.Rook]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.Rook]; }
         }
 
         public ulong WhiteBishops
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.Bishop]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.Bishop]; }
         }
 
         public ulong WhiteKnights
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.Knight]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.Knight]; }
         }
 
         public ulong WhitePawns
         {
-            get { return Pieces[(int) PieceColor.White][(int) PieceType.Pawn]; }
+            get { return _pieces[(int) PieceColor.White][(int) PieceType.Pawn]; }
         }
 
         public ulong WhitePieces
@@ -189,32 +180,32 @@ namespace ChessAgent
         
         public ulong BlackKing
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.King]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.King]; }
         }
 
         public ulong BlackQueens
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.Queen]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.Queen]; }
         }
 
         public ulong BlackRooks
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.Rook]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.Rook]; }
         }
 
         public ulong BlackBishops
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.Bishop]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.Bishop]; }
         }
 
         public ulong BlackKnights
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.Knight]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.Knight]; }
         }
 
         public ulong BlackPawns
         {
-            get { return Pieces[(int) PieceColor.Black][(int) PieceType.Pawn]; }
+            get { return _pieces[(int) PieceColor.Black][(int) PieceType.Pawn]; }
         }
         
         public ulong BlackPieces
@@ -380,6 +371,48 @@ namespace ChessAgent
             get { return (WhiteAttacksPattern & BlackKing) != 0; }
         }
 
+        public ulong WhiteKingSafetyZone
+        {
+            get
+            {
+                var pattern = KingAttackPattern(WhiteKing);
+                return NorthOne(pattern) | pattern | WhiteKing;
+            }
+        }
+        
+        public ulong BlackKingSafetyZone
+        {
+            get
+            {
+                var pattern = KingAttackPattern(BlackKing);
+                return SouthOne(pattern) | pattern | BlackKing;
+            }
+        }
+
+        // Higher is bad
+        public int WhiteKingSafetyScore
+        {
+            get
+            {
+                var kingSpace = Count(WhiteKingSafetyZone);
+                var attacked = Count(WhiteKingSafetyZone & BlackAttacksPattern);
+                
+                return 10 * attacked / kingSpace;
+            }
+        }
+        
+        // Higher is bad
+        public int BlackKingSafetyScore
+        {
+            get
+            {
+                var kingSpace = Count(BlackKingSafetyZone);
+                var attacked = Count(BlackKingSafetyZone & WhiteAttacksPattern);
+                
+                return 10 * attacked / kingSpace;
+            }
+        }
+
         public ulong WhitePawnsAbleToPush
         {
             get { return SouthOne(EmptySpace) & WhitePawns; }
@@ -483,6 +516,44 @@ namespace ChessAgent
         {
             get { return Count(BlackPawns); }
         }
+
+        public IEnumerable<Piece> AllPieces
+        {
+            get
+            {
+                var pieces = new List<Piece>();
+                
+                // White
+                pieces.AddRange(BitboardToStringList(WhitePawns).
+                    Select(pos => new Piece(PieceType.Pawn, pos, PieceColor.White)));
+                pieces.AddRange(BitboardToStringList(WhiteKnights).
+                    Select(pos => new Piece(PieceType.Knight, pos, PieceColor.White)));
+                pieces.AddRange(BitboardToStringList(WhiteBishops).
+                    Select(pos => new Piece(PieceType.Bishop, pos, PieceColor.White)));
+                pieces.AddRange(BitboardToStringList(WhiteRooks).
+                    Select(pos => new Piece(PieceType.Rook, pos, PieceColor.White)));
+                pieces.AddRange(BitboardToStringList(WhiteQueens).
+                    Select(pos => new Piece(PieceType.Queen, pos, PieceColor.White)));
+                pieces.AddRange(BitboardToStringList(WhiteKing).
+                    Select(pos => new Piece(PieceType.King, pos, PieceColor.White)));
+
+                // Black
+                pieces.AddRange(BitboardToStringList(WhitePawns).
+                    Select(pos => new Piece(PieceType.Pawn, pos, PieceColor.Black)));
+                pieces.AddRange(BitboardToStringList(WhiteKnights).
+                    Select(pos => new Piece(PieceType.Knight, pos, PieceColor.Black)));
+                pieces.AddRange(BitboardToStringList(WhiteBishops).
+                    Select(pos => new Piece(PieceType.Bishop, pos, PieceColor.Black)));
+                pieces.AddRange(BitboardToStringList(WhiteRooks).
+                    Select(pos => new Piece(PieceType.Rook, pos, PieceColor.Black)));
+                pieces.AddRange(BitboardToStringList(WhiteQueens).
+                    Select(pos => new Piece(PieceType.Queen, pos, PieceColor.Black)));
+                pieces.AddRange(BitboardToStringList(WhiteKing).
+                    Select(pos => new Piece(PieceType.King, pos, PieceColor.Black)));
+                
+                return pieces;
+            }
+        }
         
         /**
          * Methods.
@@ -493,7 +564,7 @@ namespace ChessAgent
         /// </summary>
         /// <param name="color">Color for which we generate moves.</param>
         /// <returns>A List of Move instances.</returns>
-        public List<Move> GenerateMovesFor(PieceColor color)
+        private IEnumerable<Move> GenerateMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
 
@@ -507,33 +578,28 @@ namespace ChessAgent
             return moves;
         }
 
-        public List<Move> GenerateNextMoves()
+        public IEnumerable<Move> GenerateNextMoves()
         {
-            return GenerateMovesFor(ColorPlaying);
-        }
-
-        public Board[] GenerateBoardsFromMoves(IEnumerable<Move> moves)
-        {
-            var boards = new List<Board>();
+            var moves = GenerateMovesFor(ColorPlaying);
+            var legalMoves = new List<Move>();
 
             foreach (var move in moves)
-            {
-                var board = new Board(Pieces);
-                board.PlayMove(move);
+            {               
+                PlayMove(move);
                 
-                // If player just played and still is in check
-                if (move.Color == PieceColor.White && !board.IsWhiteKingInCheck)
-                    boards.Add(board);
-                else if (move.Color == PieceColor.Black && !board.IsBlackKingInCheck)
-                    boards.Add(board);
+                // Color changed
+                if (ColorPlaying == PieceColor.Black && !IsWhiteKingInCheck ||
+                    ColorPlaying == PieceColor.White && !IsBlackKingInCheck)
+                    legalMoves.Add(move);
+                
+                Undo();
             }
 
-            return boards.ToArray();
+            return legalMoves;
         }
 
         public void PlayMove(Move move)
         {
-            Debug.Assert(move.Color == ColorPlaying);
             if (move.Color != ColorPlaying)
                 return;
             
@@ -546,21 +612,21 @@ namespace ChessAgent
             {
                 if (move.Color == PieceColor.White)
                 {
-                    Pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "c1");
-                    Pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e1"));
-                    Pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "d1");
-                    Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "a1"));
+                    _pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "c1");
+                    _pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e1"));
+                    _pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "d1");
+                    _pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "a1"));
                 }
                 else if (move.Color == PieceColor.Black)
                 {
-                    Pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "c8");
-                    Pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e8"));
-                    Pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "d8");
-                    Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "a8"));
+                    _pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "c8");
+                    _pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e8"));
+                    _pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "d8");
+                    _pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "a8"));
                 }
                 
                 ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
-                MovesPlayed.Push(move);
+                _movesPlayed.Push(move);
                 return;
             }
             // Right castle
@@ -568,28 +634,28 @@ namespace ChessAgent
             {
                 if (move.Color == PieceColor.White)
                 {
-                    Pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "g1");
-                    Pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e1"));
-                    Pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "f1");
-                    Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "h1"));
+                    _pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "g1");
+                    _pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e1"));
+                    _pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "f1");
+                    _pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "h1"));
                 }
                 else if (move.Color == PieceColor.Black)
                 {
-                    Pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "g8");
-                    Pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e8"));
-                    Pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "f8");
-                    Pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "h8"));
+                    _pieces[(int) move.Color][(int) PieceType.King] |= (ulong) 1 << Array.IndexOf(EnumSquare, "g8");
+                    _pieces[(int) move.Color][(int) PieceType.King] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "e8"));
+                    _pieces[(int) move.Color][(int) PieceType.Rook] |= (ulong) 1 << Array.IndexOf(EnumSquare, "f8");
+                    _pieces[(int) move.Color][(int) PieceType.Rook] &= ~((ulong) 1 << Array.IndexOf(EnumSquare, "h8"));
                 }
 
                 ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
-                MovesPlayed.Push(move);
+                _movesPlayed.Push(move);
                 return;  // No capture here
             }
             
             var toIdx = Array.IndexOf(EnumSquare, move.To);
             
-            Pieces[(int) move.Color][(int) move.Type] |= (ulong) 1 << toIdx;     // Set the new position
-            Pieces[(int) move.Color][(int) move.Type] &= ~((ulong) 1 << fromIdx);  // Remove the old position
+            _pieces[(int) move.Color][(int) move.Type] |= (ulong) 1 << toIdx;     // Set the new position
+            _pieces[(int) move.Color][(int) move.Type] &= ~((ulong) 1 << fromIdx);  // Remove the old position
 
             // Is it a capture?
             
@@ -613,7 +679,7 @@ namespace ChessAgent
             // If there was a black piece there... (as a white piece)
             if (move.Color == PieceColor.White && type != null)
             {
-                Pieces[(int) PieceColor.Black][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
+                _pieces[(int) PieceColor.Black][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
                 move.PieceCaptured = type;                                           // And remember it
             }
             else
@@ -636,7 +702,7 @@ namespace ChessAgent
                 // If there was a white piece there... (as a black piece)
                 if (move.Color == PieceColor.Black && type != null)
                 {
-                    Pieces[(int) PieceColor.White][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
+                    _pieces[(int) PieceColor.White][(int) type] &= ~((ulong) 1 << toIdx); // Delete the captured piece
                     move.PieceCaptured = type;                                           // And remember it
                 }
             }
@@ -645,7 +711,7 @@ namespace ChessAgent
             ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
             
             // Push to the history of moves
-            MovesPlayed.Push(move);
+            _movesPlayed.Push(move);
         }
 
         /// <summary>
@@ -653,21 +719,21 @@ namespace ChessAgent
         /// </summary>
         public void Undo()
         {
-            var move = MovesPlayed.Pop();
+            var move = _movesPlayed.Pop();
 
             // Inverse positions
             var fromIdx = Array.IndexOf(EnumSquare, move.To);
             var toIdx = Array.IndexOf(EnumSquare, move.From);
             
-            Pieces[(int) move.Color][(int) move.Type] |= (ulong) 1 << toIdx;     // Set the new position
-            Pieces[(int) move.Color][(int) move.Type] &= ~((ulong) 1 << fromIdx);  // Remove the old position
+            _pieces[(int) move.Color][(int) move.Type] |= (ulong) 1 << toIdx;     // Set the new position
+            _pieces[(int) move.Color][(int) move.Type] &= ~((ulong) 1 << fromIdx);  // Remove the old position
 
             if (move.PieceCaptured != null)
             {
                 if (move.Color == PieceColor.White)
-                    Pieces[(int) PieceColor.Black][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
+                    _pieces[(int) PieceColor.Black][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
                 else
-                    Pieces[(int) PieceColor.White][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
+                    _pieces[(int) PieceColor.White][(int) move.PieceCaptured] |= (ulong) 1 << fromIdx;
             }
 
             ColorPlaying = ColorPlaying == PieceColor.White ? PieceColor.Black : PieceColor.White;
@@ -688,11 +754,11 @@ namespace ChessAgent
             
             return squares;
         }
-
+        
         private List<Move> GenerateKingMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var king = Pieces[(int) color][(int) PieceType.King];
+            var king = _pieces[(int) color][(int) PieceType.King];
 
             if (king == 0)
                 return moves;
@@ -717,7 +783,7 @@ namespace ChessAgent
         private List<Move> GenerateQueenMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var queens = Pieces[(int) color][(int) PieceType.Queen];
+            var queens = _pieces[(int) color][(int) PieceType.Queen];
 
             if (queens == 0)
                 return moves;
@@ -745,7 +811,7 @@ namespace ChessAgent
         private List<Move> GenerateRookMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var rooks = Pieces[(int) color][(int) PieceType.Rook];
+            var rooks = _pieces[(int) color][(int) PieceType.Rook];
 
             if (rooks == 0)
                 return moves;
@@ -773,7 +839,7 @@ namespace ChessAgent
         private List<Move> GenerateKnightMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var knights = Pieces[(int) color][(int) PieceType.Knight];
+            var knights = _pieces[(int) color][(int) PieceType.Knight];
 
             if (knights == 0)
                 return moves;
@@ -801,7 +867,7 @@ namespace ChessAgent
         private List<Move> GenerateBishopMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var bishops = Pieces[(int) color][(int) PieceType.Bishop];
+            var bishops = _pieces[(int) color][(int) PieceType.Bishop];
 
             if (bishops == 0)
                 return moves;
@@ -826,10 +892,10 @@ namespace ChessAgent
             return moves;
         }
         
-        private List<Move> GeneratePawnMovesFor(PieceColor color)
+        private IEnumerable<Move> GeneratePawnMovesFor(PieceColor color)
         {
             var moves = new List<Move>();
-            var pawns = Pieces[(int) color][(int) PieceType.Pawn];
+            var pawns = _pieces[(int) color][(int) PieceType.Pawn];
 
             if (pawns == 0)
                 return moves;
@@ -854,10 +920,10 @@ namespace ChessAgent
             return moves;
         }
 
-        public bool IsRightCastleAllowedFor(PieceColor color)
+        private bool IsRightCastleAllowedFor(PieceColor color)
         {
-            ulong king = Pieces[(int) color][(int) PieceType.King];
-            ulong rooks = Pieces[(int) color][(int) PieceType.Rook];
+            ulong king = _pieces[(int) color][(int) PieceType.King];
+            ulong rooks = _pieces[(int) color][(int) PieceType.Rook];
             ulong colorPieces = color == PieceColor.White ? WhitePieces : BlackPieces;
 
             var kingSquares = BitboardToStringList(king);
@@ -890,11 +956,11 @@ namespace ChessAgent
 
             return false;
         }
-        
-        public bool IsLeftCastleAllowedFor(PieceColor color)
+
+        private bool IsLeftCastleAllowedFor(PieceColor color)
         {
-            ulong king = Pieces[(int) color][(int) PieceType.King];
-            ulong rooks = Pieces[(int) color][(int) PieceType.Rook];
+            ulong king = _pieces[(int) color][(int) PieceType.King];
+            ulong rooks = _pieces[(int) color][(int) PieceType.Rook];
             ulong colorPieces = color == PieceColor.White ? WhitePieces : BlackPieces;
 
             var kingSquares = BitboardToStringList(king);
@@ -933,10 +999,10 @@ namespace ChessAgent
          */
         
         // King
-        
-        public ulong KingPattern(PieceColor color)
+
+        private ulong KingPattern(PieceColor color)
         {
-            return KingPattern(Pieces[(int) color][(int) PieceType.King], color);
+            return KingPattern(_pieces[(int) color][(int) PieceType.King], color);
         }
 
         private ulong KingPattern(ulong king, PieceColor color)
@@ -956,9 +1022,9 @@ namespace ChessAgent
         
         // Knights
 
-        public ulong KnightsPattern(PieceColor color)
+        private ulong KnightsPattern(PieceColor color)
         {
-            return KnightsPattern(Pieces[(int) color][(int) PieceType.Knight], color);
+            return KnightsPattern(_pieces[(int) color][(int) PieceType.Knight], color);
         }
 
         private ulong KnightsPattern(ulong knights, PieceColor color)
@@ -984,9 +1050,9 @@ namespace ChessAgent
         
         // Rooks
 
-        public ulong RooksPattern(PieceColor color)
+        private ulong RooksPattern(PieceColor color)
         {
-            return RooksPattern(Pieces[(int) color][(int) PieceType.Rook], color);
+            return RooksPattern(_pieces[(int) color][(int) PieceType.Rook], color);
         }
 
         private ulong RooksPattern(ulong rooks, PieceColor color)
@@ -1002,9 +1068,9 @@ namespace ChessAgent
         
         // Bishops
 
-        public ulong BishopsPattern(PieceColor color)
+        private ulong BishopsPattern(PieceColor color)
         {
-            return BishopsPattern(Pieces[(int) color][(int) PieceType.Bishop], color);
+            return BishopsPattern(_pieces[(int) color][(int) PieceType.Bishop], color);
         }
 
         private ulong BishopsPattern(ulong bishops, PieceColor color)
@@ -1021,9 +1087,9 @@ namespace ChessAgent
         
         // Queens
 
-        public ulong QueensPattern(PieceColor color)
+        private ulong QueensPattern(PieceColor color)
         {
-            return QueensPattern(Pieces[(int) color][(int) PieceType.Queen], color);
+            return QueensPattern(_pieces[(int) color][(int) PieceType.Queen], color);
         }
 
         private ulong QueensPattern(ulong queens, PieceColor color)
@@ -1042,16 +1108,16 @@ namespace ChessAgent
         
         // Pawns
 
-        public ulong WhitePawnsPattern()
+        private ulong WhitePawnsPattern()
         {
             return WhitePawnsSinglePush() | WhitePawnsDoublePush() |
-                   (WhitePawnsSingleAttacks() & BlackPawns);
+                   (WhitePawnsSingleAttacks() & BlackPieces);
         }
 
-        public ulong BlackPawnsPattern()
+        private ulong BlackPawnsPattern()
         {
             return BlackPawnsSinglePush() | BlackPawnsDoublePush() |
-                   (BlackPawnsSingleAttacks() & WhitePawns);
+                   (BlackPawnsSingleAttacks() & WhitePieces);
         }
 
         private ulong PawnPattern(ulong pawn, PieceColor color)
@@ -1323,11 +1389,11 @@ namespace ChessAgent
          * Attcks-related functions.
          */
         
-        private bool IsAttacked(ulong targetSquares, bool whiteAttacking)
+        public int CountAttackersOn(ulong targetSquares, bool whiteAttacking)
         {
             ulong remainingTargetSquares = targetSquares;
             ulong targetSquareBb, slidingAttackers;
-            int targetSquare;
+            int targetSquare, count = 0;
 
             if (whiteAttacking)
             {
@@ -1339,13 +1405,13 @@ namespace ChessAgent
                     // Is it attacked by a pawn, knight or king?
 
                     if ((WhitePawns & BlackPawnsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     if ((WhiteKnights & KnightsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     if ((WhiteKing & KingsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     // Is it attacked by a queen or a rook?
 
@@ -1354,10 +1420,10 @@ namespace ChessAgent
                     if (slidingAttackers != 0)
                     {
                         if (((EastAttacks(targetSquareBb) | WestAttacks(targetSquareBb)) & slidingAttackers) != 0)
-                            return true;
+                            count++;
 
                         if (((NorthAttacks(targetSquareBb) | SouthAttacks(targetSquareBb)) & slidingAttackers) != 0)
-                            return true;
+                            count++;
                     }
 
                     // Is it attacked by a queen or a bishop?
@@ -1368,11 +1434,11 @@ namespace ChessAgent
                     {
                         if (((NorthEastAttacks(targetSquareBb) | SouthWestAttacks(targetSquareBb)) &
                              slidingAttackers) != 0)
-                            return true;
+                            count++;
 
                         if (((NorthWestAttacks(targetSquareBb) | SouthWestAttacks(targetSquareBb)) &
                              slidingAttackers) != 0)
-                            return true;
+                            count++;
                     }
 
                     remainingTargetSquares ^= targetSquareBb;
@@ -1388,13 +1454,13 @@ namespace ChessAgent
                     // Is it attacked by a pawn, knight or king?
 
                     if ((BlackPawns & WhitePawnsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     if ((BlackKnights & KnightsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     if ((BlackKing & KingsPossiblyAttacking(targetSquare)) != 0)
-                        return true;
+                        count++;
 
                     // Is it attacked by a queen or a rook?
                     
@@ -1403,10 +1469,10 @@ namespace ChessAgent
                     if (slidingAttackers != 0)
                     {
                         if (((EastAttacks(targetSquareBb) | WestAttacks(targetSquareBb)) & slidingAttackers) != 0)
-                            return true;
+                            count++;
 
                         if (((NorthAttacks(targetSquareBb) | SouthAttacks(targetSquareBb)) & slidingAttackers) != 0)
-                            return true;
+                            count++;
                     }
                     
                     // Is it attacked by a queen or a bishop?
@@ -1417,38 +1483,38 @@ namespace ChessAgent
                     {
                         if (((NorthEastAttacks(targetSquareBb) | SouthWestAttacks(targetSquareBb)) &
                              slidingAttackers) != 0)
-                            return true;
+                            count++;
 
                         if (((NorthWestAttacks(targetSquareBb) | SouthWestAttacks(targetSquareBb)) &
                              slidingAttackers) != 0)
-                            return true;
+                            count++;
                     }
 
                     remainingTargetSquares ^= targetSquareBb;
                 }
             }
 
-            return false;
+            return count;
         }
 
         private ulong WhitePawnsPossiblyAttacking(int squareIndex)
         {
-            ulong targetSquareBB = (ulong) 1 << squareIndex;
+            ulong targetSquares = (ulong) 1 << squareIndex;
             ulong whitePawns = 0;
             
-            whitePawns |= SouthEastOne(targetSquareBB);
-            whitePawns |= SouthWestOne(targetSquareBB);
+            whitePawns |= SouthEastOne(targetSquares);
+            whitePawns |= SouthWestOne(targetSquares);
 
             return whitePawns;
         }
         
         private ulong BlackPawnsPossiblyAttacking(int squareIndex)
         {
-            ulong targetSquareBB = (ulong) 1 << squareIndex;
+            ulong targetSquares = (ulong) 1 << squareIndex;
             ulong blackPawns = 0;
             
-            blackPawns |= NorthEastOne(targetSquareBB);
-            blackPawns |= NorthWestOne(targetSquareBB);
+            blackPawns |= NorthEastOne(targetSquares);
+            blackPawns |= NorthWestOne(targetSquares);
 
             return blackPawns;
         }
@@ -1466,8 +1532,8 @@ namespace ChessAgent
         /**
          * Helper functions.
          */
-
-        private int Count(ulong bb)
+        
+        private static int Count(ulong bb)
         {
             var count = 0;
 
@@ -1479,8 +1545,16 @@ namespace ChessAgent
             
             return count;
         }
+        
+        public static int PositionToIndex(string pos)
+        {
+            var colValue = pos[0] - 'a';
+            var rowValue = int.Parse(pos[1].ToString());
+            
+            return colValue * 8 + rowValue;
+        }
 
-        private int BitScanForward(ulong bb)
+        private static int BitScanForward(ulong bb)
         {
             if (bb == 0)
                 return -1;
@@ -1508,31 +1582,6 @@ namespace ChessAgent
         public override string ToString()
         {
             return Trace(OccupiedSpace);
-        }
-
-        public static void Main2(string[] args)
-        {
-            int[] pieces = {
-                -LeftRook, -LeftKnight,-Bishop,     -Queen, -King, -Bishop,     -RightKnight, -RightRook,
-                -Pawn,     -Pawn,      -Pawn,       -Pawn,  -Pawn, -Pawn,       -Pawn,        -Pawn,
-                0,         0,           0,          0,      0,     0,           0,            0,
-                0,         0,           0,          0,      0,     0,           0,            0,
-                0,         0,           0,          0,      0,     0,           0,            0,
-                0,         0,           0,          0,      0,     0,           0,            0,
-                Pawn,      Pawn,        Pawn,       Pawn,   Pawn,  Pawn,        Pawn,         Pawn,
-                LeftRook,  LeftKnight,  Bishop,     Queen,  King,  Bishop,      RightKnight,  RightRook
-            };
-            
-            var board = new Board(pieces);
-            var whiteMoves = board.GenerateMovesFor(PieceColor.White);
-
-            board.PlayMove(whiteMoves[0]);
-
-            Console.WriteLine(board);
-
-            board.Undo();
-            
-            Console.WriteLine(board);
         }
     }
 }
